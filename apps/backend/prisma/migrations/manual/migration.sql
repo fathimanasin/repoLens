@@ -1,0 +1,2 @@
+-- Intentionally empty. This keeps Prisma migrate compatible with the manual
+-- migration directory; run add_vector_extension.sql explicitly after init.
