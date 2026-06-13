@@ -65,4 +65,13 @@ async refresh(
     refreshToken,
   );
 }
+@Public()
+@Post('logout')
+async logout(
+  @Body('refreshToken') refreshToken: string,
+): Promise<any> {
+  return this.authService.logout(
+    refreshToken,
+  );
+}
 }

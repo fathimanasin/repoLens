@@ -1,5 +1,8 @@
 import { JwtService } from '@nestjs/jwt';
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Profile } from 'passport-github2';
 import * as bcrypt from 'bcryptjs';
@@ -185,6 +188,37 @@ async refreshAccessToken(
     }
   }
 
-  throw new Error('Invalid refresh token');
+  throw new UnauthorizedException(
+  'Invalid refresh token',
+);
 }
+async logout(
+  refreshToken: string,
+): Promise<{
+  success: boolean;
+}> {
+  const payload = await this.jwtService.verifyAsync(
+    refreshToken,
+    {
+      secret: this.configService.get<string>(
+        'JWT_REFRESH_SECRET',
+      ),
+    },
+  );
+
+  await this.prisma.refreshToken.updateMany({
+    where: {
+      userId: payload.sub,
+      revokedAt: null,
+    },
+    data: {
+      revokedAt: new Date(),
+    },
+  });
+
+  return {
+    success: true,
+  };
+}
+
 }
