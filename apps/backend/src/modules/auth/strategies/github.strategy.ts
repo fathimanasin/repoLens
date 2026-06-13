@@ -10,7 +10,7 @@ export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
   configService: ConfigService,
   private readonly authService: AuthService,
 ) {
-  console.log('GithubStrategy constructor called');
+  
 
   super({
     clientID: configService.get<string>('GITHUB_CLIENT_ID')!,
@@ -29,7 +29,7 @@ export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
   user: unknown;
   isNewUser: boolean;
 }> {
-  console.log('VALIDATE METHOD REACHED');
+  
 
   return this.authService.validateGithubUser(profile);
 }

@@ -133,9 +133,58 @@ return {
   refreshToken,
 };
 
-  return {
-    accessToken,
+
+}
+
+async refreshAccessToken(
+  refreshToken: string,
+): Promise<{
+  accessToken: string;
+}> {
+  const payload = await this.jwtService.verifyAsync(
     refreshToken,
-  };
+    {
+      secret: this.configService.get<string>(
+        'JWT_REFRESH_SECRET',
+      ),
+    },
+  );
+
+  const storedTokens =
+    await this.prisma.refreshToken.findMany({
+      where: {
+        userId: payload.sub,
+        revokedAt: null,
+      },
+    });
+
+  for (const storedToken of storedTokens) {
+    const matches = await bcrypt.compare(
+      refreshToken,
+      storedToken.tokenHash,
+    );
+
+    if (matches) {
+      const accessToken =
+        await this.jwtService.signAsync(
+          {
+            sub: payload.sub,
+            email: payload.email,
+          },
+          {
+            secret: this.configService.get<string>(
+              'JWT_SECRET',
+            ),
+            expiresIn: '15m',
+          },
+        );
+
+      return {
+        accessToken,
+      };
+    }
+  }
+
+  throw new Error('Invalid refresh token');
 }
 }

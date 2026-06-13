@@ -1,4 +1,11 @@
-import { Controller, Get, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiFoundResponse, ApiTags } from '@nestjs/swagger';
 
@@ -48,4 +55,14 @@ async me(
   @CurrentUser() user: any,
 ): Promise<any> {
   return user;
-}}
+}
+@Public()
+@Post('refresh')
+async refresh(
+  @Body('refreshToken') refreshToken: string,
+): Promise<any> {
+  return this.authService.refreshAccessToken(
+    refreshToken,
+  );
+}
+}
