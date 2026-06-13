@@ -1,5 +1,4 @@
 import {
-  IsEnum,
   IsOptional,
   IsString,
   MaxLength,
@@ -7,28 +6,20 @@ import {
   Matches,
 } from 'class-validator';
 
-
-
-
-export class CreateWorkspaceDto {
+export class UpdateWorkspaceDto {
+  @IsOptional()
   @IsString()
   @MinLength(2)
   @MaxLength(50)
-  name!: string;
+  name?: string;
 
+  @IsOptional()
   @IsString()
   @Matches(/^[a-z0-9-]+$/)
-  slug!: string;
+  slug?: string;
 
   @IsOptional()
   @IsString()
   @MaxLength(500)
   description?: string;
-
-  @IsOptional()
-@IsString()
-template?: string;
-
-  @IsString()
-  organizationId!: string;
 }
