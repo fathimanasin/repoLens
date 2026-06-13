@@ -113,6 +113,7 @@ model Organization {
 model OrganizationMember {
   id             String       @id @default(uuid())
   role           String       @default("MEMBER")
+  permissions    String[]     @default([])
   joinedAt       DateTime     @default(now()) @map("joined_at")
   organizationId String       @map("organization_id")
   userId         String       @map("user_id")
