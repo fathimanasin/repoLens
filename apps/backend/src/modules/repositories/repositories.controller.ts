@@ -26,6 +26,66 @@ async findByWorkspace(
   );
 }
 
+@Get(':repositoryId/dashboard')
+async dashboard(
+  @Param('repositoryId')
+  repositoryId: string,
+) {
+  return this.repositoriesService.getDashboard(
+    repositoryId,
+  );
+}
+
+
+
+@Get(':repositoryId/analyses')
+async findAnalyses(
+  @Param('repositoryId')
+  repositoryId: string,
+) {
+  return this.repositoriesService.findAnalyses(
+    repositoryId,
+  );
+}
+
+@Get(':repositoryId/analyses/:analysisId')
+async findAnalysisById(
+  @Param('repositoryId')
+  repositoryId: string,
+
+  @Param('analysisId')
+  analysisId: string,
+) {
+  return this.repositoriesService.findAnalysisById(
+    repositoryId,
+    analysisId,
+  );
+}
+
+@Get(':repositoryId/drift')
+async findDriftEvents(
+  @Param('repositoryId')
+  repositoryId: string,
+) {
+  return this.repositoriesService.findDriftEvents(
+    repositoryId,
+  );
+}
+
+@Get(':repositoryId/drift/:eventId')
+async findDriftEventById(
+  @Param('repositoryId')
+  repositoryId: string,
+
+  @Param('eventId')
+  eventId: string,
+) {
+  return this.repositoriesService.findDriftEventById(
+    repositoryId,
+    eventId,
+  );
+}
+
 @Get(':repositoryId')
 async findOne(
   @Param('repositoryId')
@@ -35,6 +95,7 @@ async findOne(
     repositoryId,
   );
 }
+
 
   @Post()
   async connectRepository(
