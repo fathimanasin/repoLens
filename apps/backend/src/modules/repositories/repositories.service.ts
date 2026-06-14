@@ -71,4 +71,51 @@ export class RepositoriesService {
       },
     });
   }
+
+async findByWorkspace(
+  workspaceId: string,
+) {
+  return this.prisma.repository.findMany({
+    where: {
+      workspaceId,
+    },
+    orderBy: {
+      createdAt: 'asc',
+    },
+  });
+}
+
+async findById(
+  repositoryId: string,
+) {
+  const repository =
+    await this.prisma.repository.findUnique({
+      where: {
+        id: repositoryId,
+      },
+      include: {
+        analyses: {
+          take: 5,
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
+        _count: {
+          select: {
+            analyses: true,
+            driftEvents: true,
+          },
+        },
+      },
+    });
+
+  if (!repository) {
+    throw new NotFoundException(
+      'Repository not found',
+    );
+  }
+
+  return repository;
+}
+
 }
