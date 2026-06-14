@@ -20,6 +20,7 @@
     "@nestjs/platform-socket.io": "^10.4.20",
     "@nestjs/swagger": "^7.4.2",
     "@nestjs/websockets": "^10.4.20",
+    "@octokit/rest": "^22.0.1",
     "@prisma/client": "^6.8.2",
     "bcryptjs": "^3.0.2",
     "bull": "^4.16.5",

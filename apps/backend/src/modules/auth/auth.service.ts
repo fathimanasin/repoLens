@@ -17,7 +17,10 @@ export class AuthService {
   private readonly configService: ConfigService,
 ) {}
 
-  async validateGithubUser(profile: Profile): Promise<{
+  async validateGithubUser(
+  profile: Profile,
+  accessToken: string,
+): Promise<{
     user: unknown;
     isNewUser: boolean;
   }> {
@@ -35,12 +38,21 @@ export class AuthService {
     });
 
     if (existingGithubUser) {
-      return {
-        user: existingGithubUser,
-        isNewUser: false,
-      };
-    }
+  const updatedUser =
+    await this.prisma.user.update({
+      where: {
+        id: existingGithubUser.id,
+      },
+      data: {
+        githubAccessToken: accessToken,
+      },
+    });
 
+  return {
+    user: updatedUser,
+    isNewUser: false,
+  };
+}
     const existingEmailUser = await this.prisma.user.findUnique({
       where: {
         email,
@@ -55,6 +67,7 @@ export class AuthService {
         data: {
           githubId,
           githubUsername: profile.username,
+          githubAccessToken: accessToken,
           displayName: profile.displayName,
           avatarUrl: profile.photos?.[0]?.value,
         },
@@ -71,6 +84,7 @@ export class AuthService {
         email,
         githubId,
         githubUsername: profile.username,
+        githubAccessToken: accessToken,
         displayName: profile.displayName,
         avatarUrl: profile.photos?.[0]?.value,
       },

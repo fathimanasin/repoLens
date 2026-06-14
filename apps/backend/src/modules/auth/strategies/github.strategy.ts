@@ -31,6 +31,9 @@ export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
 }> {
   
 
-  return this.authService.validateGithubUser(profile);
+  return this.authService.validateGithubUser(
+  profile,
+  accessToken,
+);
 }
 }

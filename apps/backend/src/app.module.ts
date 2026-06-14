@@ -9,6 +9,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { WorkspacesModule } from './modules/workspaces/workspaces.module';
+import { GithubModule } from './modules/github/github.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -22,6 +23,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
   AuthModule,
   OrganizationsModule,
   WorkspacesModule,
+  GithubModule,
 ],
    providers: [
   {
