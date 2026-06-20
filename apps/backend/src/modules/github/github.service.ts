@@ -55,4 +55,97 @@ export class GithubService {
       }),
     );
   }
+
+async getRepositoryBranches(
+  userId: string,
+  owner: string,
+  repo: string,
+) {
+  const user =
+    await this.prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+    });
+
+  if (!user?.githubAccessToken) {
+    throw new UnauthorizedException(
+      'GitHub account not connected',
+    );
+  }
+
+  const octokit =
+    new Octokit({
+      auth: user.githubAccessToken,
+    });
+
+  const [
+    branchesResponse,
+    repositoryResponse,
+  ] = await Promise.all([
+    octokit.repos.listBranches({
+      owner,
+      repo,
+    }),
+
+    octokit.repos.get({
+      owner,
+      repo,
+    }),
+  ]);
+
+  return branchesResponse.data.map(
+    (branch) => ({
+      name: branch.name,
+
+      isDefault:
+        branch.name ===
+        repositoryResponse.data.default_branch,
+    }),
+  );
+}
+
+async getRepositoryDetails(
+  userId: string,
+  owner: string,
+  repo: string,
+) {
+  const user =
+    await this.prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+    });
+
+  if (!user?.githubAccessToken) {
+    throw new UnauthorizedException(
+      'GitHub account not connected',
+    );
+  }
+
+  const octokit =
+    new Octokit({
+      auth: user.githubAccessToken,
+    });
+
+  const response =
+    await octokit.repos.get({
+      owner,
+      repo,
+    });
+
+  return {
+    id: response.data.id,
+    name: response.data.name,
+    fullName:
+      response.data.full_name,
+    defaultBranch:
+      response.data.default_branch,
+    isPrivate:
+      response.data.private,
+    cloneUrl:
+      response.data.clone_url,
+  };
+}
+
 }

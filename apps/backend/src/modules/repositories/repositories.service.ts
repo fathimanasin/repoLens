@@ -1,11 +1,13 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConnectRepositoryDto } from './dto/connect-repository.dto';
+import { UpdateRepositoryDto } from './dto/update-repository.dto';
 
 @Injectable()
 export class RepositoriesService {
@@ -13,23 +15,93 @@ export class RepositoriesService {
     private readonly prisma: PrismaService,
   ) {}
 
-  async connectRepository(
-    dto: ConnectRepositoryDto,
-  ) {
-    const workspace =
-      await this.prisma.workspace.findUnique({
-        where: {
-          id: dto.workspaceId,
+  private async verifyRepositoryAccess(
+  repositoryId: string,
+  userId: string,
+) {
+  const repository =
+    await this.prisma.repository.findUnique({
+      where: {
+        id: repositoryId,
+      },
+      include: {
+        workspace: true,
+      },
+    });
+
+  if (!repository) {
+    throw new NotFoundException(
+      'Repository not found',
+    );
+  }
+
+  const member =
+    await this.prisma.organizationMember.findUnique({
+      where: {
+        organizationId_userId: {
+          organizationId:
+            repository.workspace.organizationId,
+          userId,
         },
-      });
+      },
+    });
 
-    if (!workspace) {
-      throw new NotFoundException(
-        'Workspace not found',
-      );
-    }
+  if (!member) {
+    throw new ForbiddenException(
+      'Access denied',
+    );
+  }
 
-    const existingRepository =
+  return repository;
+}
+
+private async verifyWorkspaceAccess(
+  workspaceId: string,
+  userId: string,
+) {
+  const workspace =
+  await this.prisma.workspace.findUnique({
+    where: {
+      id: workspaceId,
+    },
+  });
+
+if (!workspace) {
+  throw new NotFoundException(
+    'Workspace not found',
+  );
+}
+
+const member =
+  await this.prisma.organizationMember.findUnique({
+      where: {
+        organizationId_userId: {
+          organizationId:
+            workspace.organizationId,
+          userId,
+        },
+      },
+    });
+
+  if (!member) {
+    throw new ForbiddenException(
+      'Access denied',
+    );
+  }
+
+  return workspace;
+}
+
+  async connectRepository(
+  userId: string,
+  dto: ConnectRepositoryDto,
+) {
+  await this.verifyWorkspaceAccess(
+    dto.workspaceId,
+    userId,
+  );
+
+  const existingRepository =
       await this.prisma.repository.findFirst({
         where: {
           workspaceId: dto.workspaceId,
@@ -74,7 +146,13 @@ export class RepositoriesService {
 
 async findByWorkspace(
   workspaceId: string,
+  userId: string,
 ) {
+  await this.verifyWorkspaceAccess(
+    workspaceId,
+    userId,
+  );
+
   return this.prisma.repository.findMany({
     where: {
       workspaceId,
@@ -87,7 +165,13 @@ async findByWorkspace(
 
 async findById(
   repositoryId: string,
+  userId: string,
 ) {
+  await this.verifyRepositoryAccess(
+    repositoryId,
+    userId,
+  );
+
   const repository =
     await this.prisma.repository.findUnique({
       where: {
@@ -120,7 +204,13 @@ async findById(
 
 async findAnalyses(
   repositoryId: string,
+  userId: string,
 ) {
+  await this.verifyRepositoryAccess(
+    repositoryId,
+    userId,
+  );
+
   return this.prisma.repositoryAnalysis.findMany({
     where: {
       repositoryId,
@@ -134,7 +224,13 @@ async findAnalyses(
 async findAnalysisById(
   repositoryId: string,
   analysisId: string,
+  userId: string,
 ) {
+  await this.verifyRepositoryAccess(
+    repositoryId,
+    userId,
+  );
+
   const analysis =
     await this.prisma.repositoryAnalysis.findFirst({
       where: {
@@ -154,7 +250,13 @@ async findAnalysisById(
 
 async findDriftEvents(
   repositoryId: string,
+  userId: string,
 ) {
+  await this.verifyRepositoryAccess(
+    repositoryId,
+    userId,
+  );
+
   return this.prisma.driftEvent.findMany({
     where: {
       repositoryId,
@@ -168,7 +270,13 @@ async findDriftEvents(
 async findDriftEventById(
   repositoryId: string,
   eventId: string,
+  userId: string,
 ) {
+  await this.verifyRepositoryAccess(
+    repositoryId,
+    userId,
+  );
+
   const event =
     await this.prisma.driftEvent.findFirst({
       where: {
@@ -188,7 +296,13 @@ async findDriftEventById(
 
 async getDashboard(
   repositoryId: string,
+  userId: string,
 ) {
+  await this.verifyRepositoryAccess(
+    repositoryId,
+    userId,
+  );
+
   const repository =
     await this.prisma.repository.findUnique({
       where: {
@@ -238,6 +352,66 @@ async getDashboard(
       repository._count.driftEvents,
     latestAnalysis,
     latestDrift,
+  };
+}
+
+async updateRepository(
+  repositoryId: string,
+  userId: string,
+  dto: UpdateRepositoryDto,
+) {
+  await this.verifyRepositoryAccess(
+    repositoryId,
+    userId,
+  );
+
+  return this.prisma.repository.update({
+    where: {
+      id: repositoryId,
+    },
+    data: dto,
+  });
+}
+
+async disconnectRepository(
+  repositoryId: string,
+  userId: string,
+) {
+  const repository =
+    await this.verifyRepositoryAccess(
+      repositoryId,
+      userId,
+    );
+
+  const member =
+    await this.prisma.organizationMember.findUnique({
+      where: {
+        organizationId_userId: {
+          organizationId:
+            repository.workspace.organizationId,
+          userId,
+        },
+      },
+    });
+
+  if (
+    !member?.permissions.includes(
+      'manage_workspace',
+    )
+  ) {
+    throw new ForbiddenException(
+      'Insufficient permissions',
+    );
+  }
+
+  await this.prisma.repository.delete({
+    where: {
+      id: repositoryId,
+    },
+  });
+
+  return {
+    success: true,
   };
 }
 

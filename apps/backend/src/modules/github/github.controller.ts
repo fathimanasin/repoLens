@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Param,
 } from '@nestjs/common';
 
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -30,4 +31,25 @@ export class GithubController {
       user.id,
     );
   }
+
+@Get('repos/:owner/:repo/branches')
+async getRepositoryBranches(
+  @CurrentUser() user: {
+    id: string;
+    email: string;
+  },
+
+  @Param('owner')
+  owner: string,
+
+  @Param('repo')
+  repo: string,
+) {
+  return this.githubService.getRepositoryBranches(
+    user.id,
+    owner,
+    repo,
+  );
+}
+
 }
