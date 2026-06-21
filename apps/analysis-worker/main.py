@@ -8,6 +8,7 @@ from tasks.parse_stage import parse_repository
 from tasks.metrics_stage import (
     calculate_architecture_score,
 )
+from tasks.store_stage import store_analysis_results
 
 app = FastAPI(title="RepoLens Analysis Worker")
 
@@ -104,7 +105,52 @@ def test_metrics() -> dict:
     )
 
     return metrics
+
+
+@app.post("/test/store")
+async def test_store(
+    repository_id: str,
+) -> dict:
+    pool = await get_pg_pool()
+
+    modules = parse_repository(
+        "/tmp/repolens/test-repo-py"
+    )
+
+    driver = get_neo4j_driver()
+
+    circular = build_dependency_graph(
+        modules,
+        "test-repo-py",
+        driver,
+    )
+
+    metrics = calculate_architecture_score(
+        modules,
+        circular,
+    )
+
+    snapshot = {
+        "modules": [
+            m.__dict__
+            for m in modules
+        ],
+        "circularDependencies": circular,
+    }
+
+    result = await store_analysis_results(
+        repository_id=repository_id,
+        branch="master",
+        commit_sha="test-sha-123",
+        metrics=metrics,
+        snapshot=snapshot,
+        pool=pool,
+    )
+
+    return result
     
+
+
 
     
 
