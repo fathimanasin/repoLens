@@ -5,6 +5,9 @@ from db.postgres import close_pg_pool, get_pg_pool
 from tasks.clone_stage import clone_or_update
 from tasks.graph_stage import build_dependency_graph
 from tasks.parse_stage import parse_repository
+from tasks.metrics_stage import (
+    calculate_architecture_score,
+)
 
 app = FastAPI(title="RepoLens Analysis Worker")
 
@@ -80,6 +83,27 @@ def test_graph() -> dict:
         "nodes_created": len(modules),
         "circular_dependencies": circular,
     }
+
+@app.get("/test/metrics")
+def test_metrics() -> dict:
+    driver = get_neo4j_driver()
+
+    modules = parse_repository(
+        "/tmp/repolens/test-repo-py"
+    )
+
+    circular = build_dependency_graph(
+        modules,
+        "test-repo-py",
+        driver,
+    )
+
+    metrics = calculate_architecture_score(
+        modules,
+        circular,
+    )
+
+    return metrics
     
 
     
