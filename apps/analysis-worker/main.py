@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from db.neo4j_client import close_neo4j_driver, get_neo4j_driver
 from db.postgres import close_pg_pool, get_pg_pool
 from tasks.clone_stage import clone_or_update
+from tasks.parse_stage import parse_repository
 
 app = FastAPI(title="RepoLens Analysis Worker")
 
@@ -42,12 +43,23 @@ def test_neo4j() -> dict[str, int]:
 @app.get("/test/clone")
 def test_clone() -> dict:
     result = clone_or_update(
-        "https://github.com/octocat/Hello-World",
-        "test-repo-clone",
+        "https://github.com/karpathy/micrograd",
+        "test-repo-py",
         "master",
     )
 
     return result
+
+
+@app.get("/test/parse")
+def test_parse() -> dict:
+    modules = parse_repository("/tmp/repolens/test-repo-py")
+
+    return {
+        "total_modules": len(modules),
+        "sample": modules[0].__dict__ if modules else None,
+        "all_files": [m.file_path for m in modules],
+    }
     
 
     
