@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from db.neo4j_client import close_neo4j_driver, get_neo4j_driver
 from db.postgres import close_pg_pool, get_pg_pool
+from tasks.clone_stage import clone_or_update
 
 app = FastAPI(title="RepoLens Analysis Worker")
 
@@ -37,3 +38,19 @@ def test_neo4j() -> dict[str, int]:
         return {
             "neo4j_response": result.single()["n"],
         }
+    
+@app.get("/test/clone")
+def test_clone() -> dict:
+    result = clone_or_update(
+        "https://github.com/octocat/Hello-World",
+        "test-repo-clone",
+        "master",
+    )
+
+    return result
+    
+
+    
+
+
+
