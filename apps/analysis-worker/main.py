@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from db.neo4j_client import close_neo4j_driver, get_neo4j_driver
 from db.postgres import close_pg_pool, get_pg_pool
 from tasks.clone_stage import clone_or_update
+from tasks.graph_stage import build_dependency_graph
 from tasks.parse_stage import parse_repository
 
 app = FastAPI(title="RepoLens Analysis Worker")
@@ -59,6 +60,25 @@ def test_parse() -> dict:
         "total_modules": len(modules),
         "sample": modules[0].__dict__ if modules else None,
         "all_files": [m.file_path for m in modules],
+    }
+
+@app.get("/test/graph")
+def test_graph() -> dict:
+    driver = get_neo4j_driver()
+
+    modules = parse_repository(
+        "/tmp/repolens/test-repo-py"
+    )
+
+    circular = build_dependency_graph(
+        modules,
+        "test-repo-py",
+        driver,
+    )
+
+    return {
+        "nodes_created": len(modules),
+        "circular_dependencies": circular,
     }
     
 
