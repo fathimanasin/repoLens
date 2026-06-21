@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-
+from progress import publish_progress
 from db.neo4j_client import close_neo4j_driver, get_neo4j_driver
 from db.postgres import close_pg_pool, get_pg_pool
 from tasks.clone_stage import clone_or_update
@@ -148,6 +148,21 @@ async def test_store(
     )
 
     return result
+
+@app.post("/test/progress")
+async def test_progress(
+    repository_id: str,
+) -> dict[str, bool]:
+    await publish_progress(
+        repository_id,
+        "testing",
+        50,
+        "Test message",
+    )
+
+    return {
+        "published": True,
+    }
     
 
 
