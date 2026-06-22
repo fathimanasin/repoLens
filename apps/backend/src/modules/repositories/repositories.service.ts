@@ -470,4 +470,52 @@ async triggerAnalysis(
   };
 }
 
+async getAnalysisStatus(
+  repositoryId: string,
+  userId: string,
+) {
+  const repository =
+    await this.verifyRepositoryAccess(
+      repositoryId,
+      userId,
+    );
+
+  return {
+    repositoryId:
+      repository.id,
+
+    analysisStatus:
+      repository.analysisStatus,
+  };
+}
+
+async getAnalysisTaskStatus(
+  repositoryId: string,
+  taskId: string,
+  userId: string,
+) {
+  await this.verifyRepositoryAccess(
+    repositoryId,
+    userId,
+  );
+
+  const workerUrl =
+    this.configService.get<string>(
+      'ANALYSIS_WORKER_URL',
+      'http://analysis-worker:8001',
+    );
+
+  const response = await fetch(
+    `${workerUrl}/tasks/${taskId}/status`,
+  );
+
+  if (!response.ok) {
+    throw new InternalServerErrorException(
+      'Failed to fetch task status',
+    );
+  }
+
+  return response.json();
+}
+
 }

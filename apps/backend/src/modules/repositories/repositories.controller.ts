@@ -127,6 +127,42 @@ async findDriftEventById(
   );
 }
 
+@Get(':repositoryId/analysis-status/:taskId')
+async getAnalysisTaskStatus(
+  @CurrentUser() user: {
+    id: string;
+    email: string;
+  },
+
+  @Param('repositoryId')
+  repositoryId: string,
+
+  @Param('taskId')
+  taskId: string,
+) {
+  return this.repositoriesService.getAnalysisTaskStatus(
+    repositoryId,
+    taskId,
+    user.id,
+  );
+}
+
+@Get(':repositoryId/status')
+async getAnalysisStatus(
+  @CurrentUser() user: {
+    id: string;
+    email: string;
+  },
+
+  @Param('repositoryId')
+  repositoryId: string,
+) {
+  return this.repositoriesService.getAnalysisStatus(
+    repositoryId,
+    user.id,
+  );
+}
+
 @Get(':repositoryId')
 async findOne(
   @CurrentUser() user: {
