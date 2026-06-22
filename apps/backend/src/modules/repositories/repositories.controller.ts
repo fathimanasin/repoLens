@@ -179,6 +179,22 @@ async disconnect(
   );
 }
 
+@Post(':repositoryId/analyze')
+async triggerAnalysis(
+  @CurrentUser() user: {
+    id: string;
+    email: string;
+  },
+
+  @Param('repositoryId')
+  repositoryId: string,
+) {
+  return this.repositoriesService.triggerAnalysis(
+    repositoryId,
+    user.id,
+  );
+}
+
 
   @Post()
 async connectRepository(
@@ -195,4 +211,7 @@ async connectRepository(
     dto,
   );
 }
+
+
+
 }

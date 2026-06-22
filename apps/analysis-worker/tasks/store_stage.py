@@ -90,6 +90,7 @@ async def store_analysis_results(
             )
 
             drift_event_id = None
+            delta = 0.0
 
             if (
                 previous is not None

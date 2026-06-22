@@ -4,6 +4,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { InternalServerErrorException } from '@nestjs/common';
 
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConnectRepositoryDto } from './dto/connect-repository.dto';
@@ -12,8 +14,9 @@ import { UpdateRepositoryDto } from './dto/update-repository.dto';
 @Injectable()
 export class RepositoriesService {
   constructor(
-    private readonly prisma: PrismaService,
-  ) {}
+  private readonly prisma: PrismaService,
+  private readonly configService: ConfigService,
+) {}
 
   private async verifyRepositoryAccess(
   repositoryId: string,
@@ -412,6 +415,58 @@ async disconnectRepository(
 
   return {
     success: true,
+  };
+}
+
+async triggerAnalysis(
+  repositoryId: string,
+  userId: string,
+): Promise<{ taskId: string }> {
+  const repo = await this.findById(
+    repositoryId,
+    userId,
+  );
+
+  await this.prisma.repository.update({
+    where: {
+      id: repositoryId,
+    },
+    data: {
+      analysisStatus: 'QUEUED',
+    },
+  });
+
+  const workerUrl =
+    this.configService.get<string>(
+      'ANALYSIS_WORKER_URL',
+      'http://analysis-worker:8001',
+    );
+
+  const response = await fetch(
+    `${workerUrl}/tasks/analyze`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        repositoryId: repo.id,
+        cloneUrl: repo.cloneUrl,
+        branch: repo.defaultBranch,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new InternalServerErrorException(
+      'Failed to trigger analysis',
+    );
+  }
+
+  const data = await response.json();
+
+  return {
+    taskId: data.taskId,
   };
 }
 

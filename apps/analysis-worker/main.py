@@ -33,115 +33,7 @@ async def shutdown_event() -> None:
 async def health() -> dict[str, str]:
     return {"status": "ok", "service": "analysis-worker"}
 
-
-@app.get("/test/db")
-async def test_db():
-    pool = await create_pg_pool()
-    try:
-        async with pool.acquire() as conn:
-            count = await conn.fetchval('SELECT COUNT(*) FROM "Repository"')
-        return {"repository_count": count}
-    finally:
-        await close_pg_pool(pool)
-
-@app.get("/test/neo4j")
-def test_neo4j() -> dict[str, int]:
-    driver = get_neo4j_driver()
-
-    with driver.session() as session:
-        result = session.run("RETURN 1 AS n")
-
-        return {
-            "neo4j_response": result.single()["n"],
-        }
     
-@app.get("/test/clone")
-def test_clone() -> dict:
-    result = clone_or_update(
-        "https://github.com/karpathy/micrograd",
-        "test-repo-py",
-        "master",
-    )
-
-    return result
-
-
-@app.get("/test/parse")
-def test_parse() -> dict:
-    modules = parse_repository("/tmp/repolens/test-repo-py")
-
-    return {
-        "total_modules": len(modules),
-        "sample": modules[0].__dict__ if modules else None,
-        "all_files": [m.file_path for m in modules],
-    }
-
-@app.get("/test/graph")
-def test_graph() -> dict:
-    driver = get_neo4j_driver()
-
-    modules = parse_repository(
-        "/tmp/repolens/test-repo-py"
-    )
-
-    circular = build_dependency_graph(
-        modules,
-        "test-repo-py",
-        driver,
-    )
-
-    return {
-        "nodes_created": len(modules),
-        "circular_dependencies": circular,
-    }
-
-@app.get("/test/metrics")
-def test_metrics() -> dict:
-    driver = get_neo4j_driver()
-
-    modules = parse_repository(
-        "/tmp/repolens/test-repo-py"
-    )
-
-    circular = build_dependency_graph(
-        modules,
-        "test-repo-py",
-        driver,
-    )
-
-    metrics = calculate_architecture_score(
-        modules,
-        circular,
-    )
-
-    return metrics
-
-
-
-@app.post("/test/store")
-async def test_store(repository_id: str):
-    pool = await create_pg_pool()
-    try:
-        modules = parse_repository("/tmp/repolens/test-repo-py")
-        driver = get_neo4j_driver()
-        circular = build_dependency_graph(modules, "test-repo-py", driver)
-        metrics = calculate_architecture_score(modules, circular)
-        snapshot = {
-            "modules": [m.__dict__ for m in modules],
-            "circularDependencies": circular,
-        }
-        result = await store_analysis_results(
-            repository_id=repository_id,
-            branch="master",
-            commit_sha="test-sha-123",
-            metrics=metrics,
-            snapshot=snapshot,
-            pool=pool,
-        )
-        return result
-    finally:
-        await close_pg_pool(pool)
-
 
 @app.post("/tasks/analyze")
 def trigger_analysis(
@@ -176,21 +68,6 @@ def get_task_status(
             else None,
     }
 
-@app.post("/test/progress")
-async def test_progress(
-    repository_id: str,
-) -> dict[str, bool]:
-    await publish_progress(
-        repository_id,
-        "testing",
-        50,
-        "Test message",
-    )
-
-    return {
-        "published": True,
-    }
-    
 
 
 
