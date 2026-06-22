@@ -4,8 +4,10 @@ import {
   Get,
   Post,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiFoundResponse, ApiTags } from '@nestjs/swagger';
 
@@ -34,13 +36,35 @@ export class AuthController {
     description: 'GitHub OAuth callback',
   })
   async githubCallback(
-    @Req() req: any,
-  ): Promise<any> {
+  @Req() req: any,
+  @Res({ passthrough: true })
+  res: Response,
+): Promise<any> {
     const tokens = await this.authService.issueTokens({
   id: req.user.user.id,
   email: req.user.user.email,
 });
+res.cookie(
+  'access_token',
+  tokens.accessToken,
+  {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: false,
+    maxAge: 15 * 60 * 1000,
+  },
+);
 
+res.cookie(
+  'refresh_token',
+  tokens.refreshToken,
+  {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: false,
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  },
+);
 
 
 return {
