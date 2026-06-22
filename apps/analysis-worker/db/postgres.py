@@ -1,32 +1,25 @@
 import os
-
 import asyncpg
 
 
-_pool: asyncpg.Pool | None = None
+async def create_pg_pool() -> asyncpg.Pool:
+    """
+    Creates a fresh pool bound to the current event loop.
+    Use this inside Celery tasks (asyncio.run per task).
+    Caller is responsible for closing via close_pg_pool().
+    """
+    return await asyncpg.create_pool(
+        dsn=os.getenv("DATABASE_URL"),
+        min_size=2,
+        max_size=5,
+    )
 
 
+async def close_pg_pool(pool: asyncpg.Pool) -> None:
+    await pool.close()
+
+
+# Kept for FastAPI test endpoints only.
+# DO NOT use inside Celery tasks.
 async def get_pg_pool() -> asyncpg.Pool:
-    global _pool
-
-    if _pool is None:
-        database_url = os.getenv("DATABASE_URL")
-
-        if not database_url:
-            raise RuntimeError("DATABASE_URL is not set")
-
-        _pool = await asyncpg.create_pool(
-            dsn=database_url,
-            min_size=1,
-            max_size=10,
-        )
-
-    return _pool
-
-
-async def close_pg_pool() -> None:
-    global _pool
-
-    if _pool is not None:
-        await _pool.close()
-        _pool = None
+    return await create_pg_pool()

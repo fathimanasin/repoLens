@@ -1,7 +1,10 @@
 from fastapi import FastAPI
 from progress import publish_progress
 from db.neo4j_client import close_neo4j_driver, get_neo4j_driver
-from db.postgres import close_pg_pool, get_pg_pool
+from db.postgres import (
+    create_pg_pool,
+    close_pg_pool,
+)
 from tasks.clone_stage import clone_or_update
 from tasks.graph_stage import build_dependency_graph
 from tasks.parse_stage import parse_repository
@@ -10,11 +13,19 @@ from tasks.metrics_stage import (
 )
 from tasks.store_stage import store_analysis_results
 
+from pydantic import BaseModel
+
+from tasks.analysis_task import run_analysis
+
 app = FastAPI(title="RepoLens Analysis Worker")
+
+class AnalyzeRequest(BaseModel):
+    repositoryId: str
+    cloneUrl: str
+    branch: str = "main"
 
 @app.on_event("shutdown")
 async def shutdown_event() -> None:
-    await close_pg_pool()
     close_neo4j_driver()
 
 
@@ -24,15 +35,14 @@ async def health() -> dict[str, str]:
 
 
 @app.get("/test/db")
-async def test_db() -> dict[str, int]:
-    pool = await get_pg_pool()
-
-    async with pool.acquire() as conn:
-        count = await conn.fetchval(
-            'SELECT COUNT(*) FROM "Repository"'
-        )
-
-    return {"repository_count": count}
+async def test_db():
+    pool = await create_pg_pool()
+    try:
+        async with pool.acquire() as conn:
+            count = await conn.fetchval('SELECT COUNT(*) FROM "Repository"')
+        return {"repository_count": count}
+    finally:
+        await close_pg_pool(pool)
 
 @app.get("/test/neo4j")
 def test_neo4j() -> dict[str, int]:
@@ -107,47 +117,64 @@ def test_metrics() -> dict:
     return metrics
 
 
+
 @app.post("/test/store")
-async def test_store(
-    repository_id: str,
+async def test_store(repository_id: str):
+    pool = await create_pg_pool()
+    try:
+        modules = parse_repository("/tmp/repolens/test-repo-py")
+        driver = get_neo4j_driver()
+        circular = build_dependency_graph(modules, "test-repo-py", driver)
+        metrics = calculate_architecture_score(modules, circular)
+        snapshot = {
+            "modules": [m.__dict__ for m in modules],
+            "circularDependencies": circular,
+        }
+        result = await store_analysis_results(
+            repository_id=repository_id,
+            branch="master",
+            commit_sha="test-sha-123",
+            metrics=metrics,
+            snapshot=snapshot,
+            pool=pool,
+        )
+        return result
+    finally:
+        await close_pg_pool(pool)
+
+
+@app.post("/tasks/analyze")
+def trigger_analysis(
+    req: AnalyzeRequest,
 ) -> dict:
-    pool = await get_pg_pool()
-
-    modules = parse_repository(
-        "/tmp/repolens/test-repo-py"
+    task = run_analysis.delay(
+        req.repositoryId,
+        req.cloneUrl,
+        req.branch,
     )
 
-    driver = get_neo4j_driver()
-
-    circular = build_dependency_graph(
-        modules,
-        "test-repo-py",
-        driver,
-    )
-
-    metrics = calculate_architecture_score(
-        modules,
-        circular,
-    )
-
-    snapshot = {
-        "modules": [
-            m.__dict__
-            for m in modules
-        ],
-        "circularDependencies": circular,
+    return {
+        "taskId": task.id,
+        "status": "queued",
     }
 
-    result = await store_analysis_results(
-        repository_id=repository_id,
-        branch="master",
-        commit_sha="test-sha-123",
-        metrics=metrics,
-        snapshot=snapshot,
-        pool=pool,
+
+@app.get("/tasks/{task_id}/status")
+def get_task_status(
+    task_id: str,
+) -> dict:
+    result = run_analysis.AsyncResult(
+        task_id
     )
 
-    return result
+    return {
+        "taskId": task_id,
+        "status": result.status,
+        "result":
+            result.result
+            if result.ready()
+            else None,
+    }
 
 @app.post("/test/progress")
 async def test_progress(
